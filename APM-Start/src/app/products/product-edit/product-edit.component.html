@@ -6,9 +6,13 @@
   <div class="card-body" *ngIf="product">
     <div class="wizard">
       <a
-      [routerLink]="['info']"> Basic Information </a>
+      [routerLink]="['info']"
+      routerLinkActive="active">
+       Basic Information <span [ngClass]="{'fa fa-exclamation':!isValid('info')}"></span>
+      </a>
       <a
-      [routerLink]="['tags']"> Search Tags </a>
+      [routerLink]="['tags']"
+      routerLinkActive="active"> Search Tags </a>
     </div>
     <router-outlet></router-outlet>
     <div class="row mb-2">
@@ -17,7 +21,8 @@
           class="btn btn-primary mr-3"
           style="width: 80px"
           type="button"
-          title="Save your entered data"
+          [title]="isValid() ? 'Save your entered data' : 'Disabled until the form data is valid'"
+          [disabled]="!isValid()"
           (click)="saveProduct()"
         >
           Save
