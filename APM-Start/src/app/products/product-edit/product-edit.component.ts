@@ -8,31 +8,47 @@ import { ProductService } from '../product.service';
 
 @Component({
   templateUrl: './product-edit.component.html',
-  styleUrls: ['./product-edit.component.css']
+  styleUrls: ['./product-edit.component.css'],
 })
 export class ProductEditComponent implements OnInit {
   pageTitle = 'Product Edit';
   errorMessage: string;
 
-  product: Product;
+  private dataIsValid: { [key: string]: boolean } = {};
 
-  constructor(private productService: ProductService,
-              private messageService: MessageService,
-              private route:ActivatedRoute,
-              private router: Router) { }
-
-  getProduct(id: number): void {
-    this.productService.getProduct(id).subscribe({
-      next: product => this.onProductRetrieved(product),
-      error: err => this.errorMessage = err
-    });
+  get isDirty(): boolean {
+    return JSON.stringify(this.originalProduct) !== JSON.stringify(this.currentProduct);
   }
-  ngOnInit():void{
-    this.route.data.subscribe(data => {
-      const resolvedData: ProductResolved=this.route.snapshot.data['resolvedData'];
-      this.errorMessage=resolvedData.error;
-      this.onProductRetrieved(resolvedData.product);
+  private currentProduct: Product;
+  private originalProduct: Product;
 
+  get product(): Product{
+    return this.currentProduct;
+  }
+
+  set product(value: Product) {
+    this.currentProduct = value;
+    this.originalProduct = value? {...value}: null; //{...value};
+  }
+
+  constructor(
+    private productService: ProductService,
+    private messageService: MessageService,
+    private route: ActivatedRoute,
+    private router: Router
+  ) {}
+
+  // getProduct(id: number): void {
+  //   this.productService.getProduct(id).subscribe({
+  //     next: (product) => this.onProductRetrieved(product),
+  //     error: (err) => (this.errorMessage = err),
+  //   });
+  // }
+  ngOnInit(): void {
+    this.route.data.subscribe((data) => {
+      const resolvedData: ProductResolved = data['resolvedData'];
+      this.errorMessage = resolvedData.error;
+      this.onProductRetrieved(resolvedData.product);
     });
   }
 
@@ -57,24 +73,49 @@ export class ProductEditComponent implements OnInit {
     } else {
       if (confirm(`Really delete the product: ${this.product.productName}?`)) {
         this.productService.deleteProduct(this.product.id).subscribe({
-          next: () => this.onSaveComplete(`${this.product.productName} was deleted`),
-          error: err => this.errorMessage = err
+          next: () =>
+            this.onSaveComplete(`${this.product.productName} was deleted`),
+          error: (err) => (this.errorMessage = err),
         });
       }
     }
   }
 
+  isValid(path?: string): boolean {
+    this.validate();
+    if (path) {
+      return this.dataIsValid[path];
+    }
+    return (
+      this.dataIsValid &&
+      Object.keys(this.dataIsValid).every((d) => this.dataIsValid[d] === true)
+    );
+  }
+
+  reset(): void {
+    this.dataIsValid = null;
+    this.currentProduct = null;
+    this.originalProduct = null;
+  }
+
+
   saveProduct(): void {
-    if (true === true) {
+    if (this.isValid()) {
       if (this.product.id === 0) {
         this.productService.createProduct(this.product).subscribe({
-          next: () => this.onSaveComplete(`The new ${this.product.productName} was saved`),
-          error: err => this.errorMessage = err
+          next: () =>
+            this.onSaveComplete(
+              `The new ${this.product.productName} was saved`
+            ),
+          error: (err) => (this.errorMessage = err),
         });
       } else {
         this.productService.updateProduct(this.product).subscribe({
-          next: () => this.onSaveComplete(`The updated ${this.product.productName} was saved`),
-          error: err => this.errorMessage = err
+          next: () =>
+            this.onSaveComplete(
+              `The updated ${this.product.productName} was saved`
+            ),
+          error: (err) => (this.errorMessage = err),
         });
       }
     } else {
@@ -86,8 +127,32 @@ export class ProductEditComponent implements OnInit {
     if (message) {
       this.messageService.addMessage(message);
     }
+    this.reset();
 
     // Navigate back to the product list
     this.router.navigate(['/products']);
+  }
+
+  validate(): void {
+    // Clear the validation object
+    this.dataIsValid = {};
+
+    // 'info' tab
+    if (
+      this.product.productName &&
+      this.product.productName.length >= 3 &&
+      this.product.productCode
+    ) {
+      this.dataIsValid['info'] = true;
+    } else {
+      this.dataIsValid['info'] = false;
+    }
+
+    // 'tags' tab
+    if (this.product.category && this.product.category.length >= 3) {
+      this.dataIsValid['tags'] = true;
+    } else {
+      this.dataIsValid['tags'] = false;
+    }
   }
 }
